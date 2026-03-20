@@ -4,7 +4,7 @@
 
 ## Índice
 
-### Português
+#### Português
 
 * [Visão Geral](#visão-geral)
 * [Funcionalidades](#funcionalidades)
@@ -13,11 +13,11 @@
 * [Como Funciona (Internamente)](#como-funciona-internamente)
 * [Tecnologias Utilizadas](#tecnologias-utilizadas)
 
-### English
+#### English
 
 * [Overview](#overview)
 * [Features](#features)
-* [Controls](#controls-1)
+* [Controls](#controls)
 * [Installation](#installation)
 * [How It Works (Internals)](#how-it-works-internals)
 * [Technologies Used](#technologies-used)
