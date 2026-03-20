@@ -28,7 +28,7 @@
 
 ## Visão Geral
 
-**fastproc++** é um gerenciador de processos em modo terminal desenvolvido em C, utilizando ncurses. O projeto foi construído com foco em explorar conceitos de sistemas Linux, leitura direta do `/proc`, concorrência e manipulação eficiente de dados em tempo real.
+**fastprocV2** é um gerenciador de processos em modo terminal desenvolvido em C, utilizando ncurses. O projeto foi construído com foco em explorar conceitos de sistemas Linux, leitura direta do `/proc`, concorrência e manipulação eficiente de dados em tempo real.
 
 ---
 
@@ -167,7 +167,7 @@ Para evitar inconsistência:
 
 ## Overview
 
-**fastproc++** is a terminal-based process manager written in C using ncurses. It focuses on Linux internals, `/proc` parsing, concurrency, and real-time updates.
+**fastprocV2** is a terminal-based process manager written in C using ncurses. It focuses on Linux internals, `/proc` parsing, concurrency, and real-time updates.
 
 ---
 
