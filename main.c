@@ -686,11 +686,6 @@ int main(){
         }   
         for (int i = 0; i < maxElements ; i++){
             int index_ncurses = inicio + i-3;
-        
-            if (index_ncurses == selected) {
-                wattron(win1, A_REVERSE);
-            }
-        
             if (i == 0) {
                 mvwprintw(win1, i+1, 1, "   ________________________________________________________________  ");
                 continue;
@@ -707,7 +702,18 @@ int main(){
             }
         
             else if (i<snapshotCount+3) {
-                mvwprintw(win1, i+1, 1, "  |  %7d  | %-16.15s | %6.d  |  %6.1f %-5.4s | %4.1lf%% |  ", listSnapshot[index_ncurses].p_pid,listSnapshot[index_ncurses].p_name,listSnapshot[index_ncurses].p_threads,listSnapshot[index_ncurses].p_ram/(1024.0*1024)," MBs", listSnapshot[index_ncurses].p_cpuPercent * 100);
+                
+                mvwprintw(win1, i+1, 3, "|");
+                if (index_ncurses == selected) {
+                    wattron(win1, A_REVERSE);
+                }
+                mvwprintw(win1, i+1, 4, "  %7d  | %-16.15s | %6.d  |  %6.1f %-5.4s | %4.1lf%% ", listSnapshot[index_ncurses].p_pid,listSnapshot[index_ncurses].p_name,listSnapshot[index_ncurses].p_threads,listSnapshot[index_ncurses].p_ram/(1024.0*1024)," MBs", listSnapshot[index_ncurses].p_cpuPercent * 100);
+                if (index_ncurses == selected) {
+                    wattroff(win1, A_REVERSE);
+                }
+                mvwprintw(win1, i+1, 68, "|");
+
+
             }
             else {
                 mvwprintw(win1, i+1, 1, "  |           |                  |         |               |       | ");
@@ -715,9 +721,6 @@ int main(){
             if (i == maxElements-1) {
                 mvwprintw(win1, i+1, 1, "  !________________________________________________________________! ");
                 continue;
-            }
-            if (index_ncurses == selected) {
-                wattroff(win1, A_REVERSE);
             }
         }
         ch = getch();
@@ -832,8 +835,8 @@ int main(){
         
         mvwprintw(winInfo,0,2,    "> Sorting Methods Controls <");
         mvwprintw(winInfo,0,39,   "> Current Sort Method: %s <", sortMethods[currSortMethod]);
-        mvwprintw(winInfo,1,2,    "Press '1' to sort by Used RAM    | Press '3' to sort by Threads");
-        mvwprintw(winInfo,2,2,    "Press '2' to sort by CPU usage   | Press '4' to sort by PID");
+        mvwprintw(winInfo,1,2,    "Press '1' to sort by Used RAM   | Press '3' to sort by Threads");
+        mvwprintw(winInfo,2,2,    "Press '2' to sort by CPU usage  | Press '4' to sort by PID");
 
         mvwprintw(win3,0,2, "> System Info <");
         mvwprintw(win3,1,2, "Current RAM in Use:     %.2f GBs | Total RAM Avaliable: %.2f GBs", memoria_usada_atual,memoria_total_pc);
