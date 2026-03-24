@@ -1,7 +1,7 @@
 ![linux](https://camo.githubusercontent.com/9c6de7896005745fddf0b97e543f0b26ca4e2e91168dff69dd1d35f5642cbabc/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f2d4c696e75782d677265793f6c6f676f3d6c696e7578) ![license](https://img.shields.io/badge/License-MIT-green) ![badge](https://img.shields.io/badge/Lang-C-blue) ![usage](https://camo.githubusercontent.com/a94e6b08384e62ac05e72aa93ae531736af8fb57a227498ec68ad88934873ebc/68747470733a2f2f696d672e736869656c64732e696f2f62616467652f55736167652d53797374656d2532307265736f757263652532306d6f6e69746f722d79656c6c6f77) 
 # 🖥️ *FastprocV2* 
 <img width="338" height="353" alt="CLI Demo" src="assets/fastprocv2-demo.gif" />
-<img width="756" height="440" alt="CLI Demo res" src="assets/2026-03-23 23-45-18.jpg" />  
+
 
 
 ## Índice
@@ -30,7 +30,12 @@
 
 ## Visão Geral
 
+
 **fastprocV2** é um gerenciador de processos em modo terminal desenvolvido em C com ncurses. O projeto foca em oferecer uma interface compacta e eficiente, realizando leitura direta do /proc para monitoramento em tempo real, com uso de concorrência e manipulação otimizada de dados.
+
+### FastprocV2 aberto junto com outro programa
+
+<img width="756" height="440" alt="CLI Demo res" src="assets/2026-03-23 23-45-18.jpg" />  
 
 ---
 
@@ -170,6 +175,11 @@ Para evitar inconsistência:
 ## Overview
 
 **fastprocV2** is a terminal-based process manager written in C using ncurses. The project focuses on providing a compact and efficient interface, performing direct /proc parsing for real-time monitoring, with the use of concurrency and optimized data handling.
+
+### FastprocV2 running with a other program
+
+<img width="756" height="440" alt="CLI Demo res" src="assets/2026-03-23 23-45-18.jpg" />  
+
 
 ---
 
