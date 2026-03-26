@@ -976,6 +976,6 @@ int main(){
         }
         free(cpuTempSnapshot);
         free_process_list(listSnapshot, snapshotCount); 
-        usleep(10000);
+        usleep(20000);
     }
 }
