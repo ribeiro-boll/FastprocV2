@@ -20,8 +20,17 @@ char* sortMethods[] = {"RAM",  "CPU", "Threads","PID"};
 int currSortMethod = 0;
 char charSequence[32] = "";
 int charSequenceCurrIndex = 0;
+double cpuTotalUsage = 0.0;
+double cpuTotalUsageCopy = 0.0;
+float temperatureAverage = 0.0;
+float temperatureAverageCopy = 0.0;
+float *temperatureCores = NULL;
+float *temperatureCoresCopy = NULL;
+int contagemCores = 0;
+int contagemCoresCopy = 0;
 
-struct Process{
+
+struct Process {
     char *p_name;
     char *p_state;
     int p_pid;
@@ -73,8 +82,6 @@ processStruct *deep_copy_process_list(processStruct *src, int count) {
         copy[i].p_threads = src[i].p_threads;
         copy[i].p_cpuNewCount = src[i].p_cpuNewCount;
         copy[i].p_cpuPercent = src[i].p_cpuPercent;
-
-        // deep copy das strings
         copy[i].p_name = src[i].p_name ? strdup(src[i].p_name) : NULL;
         copy[i].p_state = src[i].p_state ? strdup(src[i].p_state) : NULL;
     }
@@ -137,7 +144,6 @@ void free_map(HashMap *map) {
     free(map->buckets);
     free(map);
 }
-
 int getNmbrOfCores(){
     int nmbrOfCores = 0;
     char* buffer = malloc(2048);
@@ -155,6 +161,7 @@ int getNmbrOfCores(){
     fclose(cpuinfo);
     return nmbrOfCores;
 }
+
 long long int convert_int(char* arr){
     long long int retorno_nmr =0;
     for (int i = 0;i<(int)strlen(arr);i++){
@@ -169,6 +176,51 @@ long long int convert_int(char* arr){
     }
     return retorno_nmr;
 }
+
+void addToTempList(char* temporaryPath){
+    FILE* f = fopen(temporaryPath, "r");
+    if (f == NULL) return;
+    char buffer[32];
+    fgets(buffer, 32, f);
+    float temp = convert_int(buffer)/1000;
+    if (temperatureCores == NULL){
+        temperatureCores = malloc(sizeof(float));
+        contagemCores++;
+        temperatureCores[contagemCores-1] = temp;
+        temperatureAverage = temp;
+    }
+    else{
+        contagemCores++;
+        temperatureCores = realloc(temperatureCores,sizeof(float)*contagemCores);
+        temperatureCores[contagemCores-1] = temp;
+        temperatureAverage += temp;
+    }
+    fclose(f);
+}
+
+void getCpuTemp(char* path){
+    DIR* diretorio = opendir(path);
+    if (diretorio == NULL){
+        return;
+    }
+    struct dirent *entity = readdir(diretorio);
+    while (entity!=NULL) {
+        if (strcmp(entity->d_name,".") == 0 || strcmp(entity->d_name,"..") == 0) {
+            entity = readdir(diretorio);
+            continue;
+        }
+        else if (strncmp(entity->d_name, "thermal_zone", 12)==0) {
+            char temporaryPath[1024];
+            snprintf(temporaryPath, 1024, "%s/%s/%s", path,entity->d_name,"temp");
+            addToTempList(temporaryPath);
+            entity = readdir(diretorio);
+            continue;
+        }
+        entity = readdir(diretorio);
+    }
+    closedir(diretorio);
+}
+
 
 long long int getSystemCpuTime(){
     char* buffer = malloc(2048);
@@ -319,8 +371,8 @@ void populateProcessStruct(char* pathToStatus, processStruct *process){
         process->p_cpuPercent = 0;
         process->p_pid = 0;
         process->p_ram = 0;
-        process->p_state = " ";
-        process->p_name = " ";
+        process->p_state = strdup(" ");
+        process->p_name = strdup(" ");
         process->p_threads = 0;
         return;
     }
@@ -392,6 +444,7 @@ void populateProcessStruct(char* pathToStatus, processStruct *process){
             }
             else {
                 process->p_cpuPercent = ((double)(process->p_cpuNewCount - iten->cpu_time)/(( cpuNewTickCount-cpuOldTickCount))); 
+                cpuTotalUsage+=process->p_cpuPercent;
                 totalUptime = 0;
             }
         }
@@ -554,7 +607,7 @@ void testRecursionOldCpu(char* path){
     }
     closedir(diretorio);
 }
-int breakLoop = 0;
+_Atomic int breakLoop = 0;
 WINDOW *create_newwin(int height, int width, int starty, int startx){	WINDOW *local_win;
 
 	local_win = newwin(height, width, starty, startx);
@@ -563,13 +616,29 @@ WINDOW *create_newwin(int height, int width, int starty, int startx){	WINDOW *lo
 
 	return local_win;
 }
+
+float *cpyTempArr(float *src, int count) {
+    if (!src || count <= 0) return NULL;
+
+    float *copy = malloc(sizeof(float) * count);
+
+    for (int i = 0; i < count; i++) {
+        copy[i] = src[i];
+    }
+
+    return copy;
+}
+
 void *routine(void* arg){
     while (1) {
         int filteredByNameCond = 0;
         hs = NULL;
         processList = NULL; 
         processListFilteredTemporary = NULL;
+        temperatureCores = NULL;
+        //temperatureCoresCopy = NULL;
         hs = create_map(1024);
+        getCpuTemp("/sys/class/thermal");
         cpuOldTickCount = getSystemCpuTime();
         testRecursionOldCpu("/proc");
         sleep(1);
@@ -581,26 +650,30 @@ void *routine(void* arg){
             case 2: sort_array_threads(processList,processNmbr);break;
             case 3: sort_array_pid(processList,processNmbr);    break;
         }
-        sort_array_name(processList,charSequence);filteredByNameCond = 1;
+        sort_array_name(processList,charSequence);
+        filteredByNameCond = 1;
+
         pthread_mutex_lock(&mutex);
-        free_process_list(processListNcurses, processNmbrNcurses); 
+        free_process_list(processListNcurses, processNmbrNcurses);
+        free(temperatureCoresCopy);
+        temperatureCoresCopy = NULL;
         processListNcurses = NULL;
-        if (filteredByNameCond) {
-            processListNcurses = deep_copy_process_list(processListFilteredTemporary, processNmbrFilteredTemporary);
-            processNmbrNcurses = processNmbrFilteredTemporary;
-            free_process_list(processListFilteredTemporary, processNmbrFilteredTemporary);
-            free_process_list(processList, processNmbr); 
-        }
-        else {
-            processListNcurses = deep_copy_process_list(processList, processNmbr);
-            processNmbrNcurses = processNmbr;
-            free_process_list(processList, processNmbr);
-        }
+        temperatureCoresCopy = cpyTempArr(temperatureCores,contagemCores);
+        temperatureAverageCopy = temperatureAverage/contagemCores;
+        processListNcurses = deep_copy_process_list(processListFilteredTemporary, processNmbrFilteredTemporary);
+        processNmbrNcurses = processNmbrFilteredTemporary;
+        cpuTotalUsageCopy = cpuTotalUsage;
+        free_process_list(processListFilteredTemporary, processNmbrFilteredTemporary);
+        free_process_list(processList, processNmbr);
+        free(temperatureCores);
+        contagemCoresCopy = contagemCores;
         pthread_mutex_unlock(&mutex);
-        
+
+        contagemCores = 0;
         processNmbrFilteredTemporary = 0;
         processNmbr = 0;
-        free_map(hs); 
+        cpuTotalUsage = 0.0;
+        free_map(hs);
         if (breakLoop){
             break;
         }
@@ -612,11 +685,11 @@ int main(){
     int showCredits = 1;
     setlocale(LC_ALL, ".UTF8");
     pthread_t t1;
-    WINDOW *win1, *win2, *win3, *win4, *winInfo;
+    WINDOW *win1, *win2, *win3, *win4, *winTemp, *winInfo;
     pthread_mutex_init(&mutex, NULL);
 	int startx, starty, width, height;
 	int ch;
-    int maxElements = 12;
+    int maxElements = 11;
     int condTyping = 0;
     char* lastClosedProcess = strdup("~~~~~~~~~~~~~");
 	initscr();
@@ -629,16 +702,20 @@ int main(){
 	width = 72;
 	starty = (LINES - height) / 2 - 10;
 	startx = (COLS - width) / 2;
-	win1 = create_newwin(height, width, starty+1, startx);
-    winInfo = create_newwin(height/2 - 3, width, starty + 15, startx);
-    win3 = create_newwin(height/2 - 3, width, starty + 14 + 11, startx);
-    win2 = create_newwin(height/2 - 1, width, starty + 14 +5, startx);
-    win4 = create_newwin(height/2  -3, width, starty + 14 +7 + 8, startx);
+	win1 = create_newwin(height - 1, width, starty+1, startx);
+    winInfo = create_newwin(height/2 - 3, width, starty + 14, startx);
+
+    win2 =      create_newwin(height/2 - 3, width, starty + 14 + 4, startx);
+    winTemp =   create_newwin(height/2 - 3, width, starty + 14 + 4 + 4 + 4, startx);
+    win3 =      create_newwin(height/2 - 3, width, starty + 14 + 4 + 4, startx);
+    win4 =      create_newwin(height/2  -3, width, starty + 14 + 4 + 4 + 4 + 4, startx);
     processList = NULL;
     processListNcurses = NULL;
     pageSize = sysconf(_SC_PAGESIZE);
     systemHertz = sysconf(_SC_CLK_TCK);
     nmbrOfCores = getNmbrOfCores();
+
+
     //wrefresh(my_win);
     pthread_create(&t1, NULL, routine, NULL);
     sleep(2);
@@ -646,16 +723,26 @@ int main(){
     int inicio = 0;
     char linha_texto[1024];
     double mem1 =1, mem2=1;
-    double memoria_total_pc = 0;
-    double memoria_usada_atual = 0;
+    double memoria_total_pc = 0.0;
+    double memoria_usada_atual = 0.0;
+
     double percentage = 0;
     int contadorLastValidProcess = 0;
     int condKeyDown;
+    int snapshotCount;
+    double cpuTotalUsageCopySnapshot;
+    float cpuAverageTempSnapshot;
+
+    int contagemCoresSnapshot;
     while (1) {
         condKeyDown = 0;
         pthread_mutex_lock(&mutex);
         processStruct *listSnapshot = deep_copy_process_list(processListNcurses, processNmbrNcurses);
-        int snapshotCount = processNmbrNcurses;
+        float *cpuTempSnapshot = cpyTempArr(temperatureCoresCopy,contagemCoresCopy);
+        snapshotCount = processNmbrNcurses;
+        cpuTotalUsageCopySnapshot = cpuTotalUsageCopy;
+        cpuAverageTempSnapshot = temperatureAverageCopy;
+        contagemCoresSnapshot = contagemCoresCopy;
         pthread_mutex_unlock(&mutex);
         FILE *meminfo = fopen("/proc/meminfo", "r");
         if(meminfo) {
@@ -677,7 +764,7 @@ int main(){
         box(win3, 0, 0);
         box(win4, 0, 0);
         box(winInfo, 0, 0);
-
+        box(winTemp, 0, 0);
         mvwprintw(win1, 0, 2, "> Current Process List <");
         if (showCredits){
             mvwprintw(win4,5,37, "(Author: Lucca Ribeiro, Bolota :D)");
@@ -697,7 +784,7 @@ int main(){
                 continue;
             }
             if (i == maxElements-1) {
-                mvwprintw(win1, i+1, 1, "  !________________________________________________________________! ");
+                mvwprintw(win1, i+1, 1, "  !___________!__________________!_________!_______________!_______! ");
                 continue;
             }
             else if (i<snapshotCount+3 && index_ncurses < snapshotCount && index_ncurses >=0) {
@@ -705,10 +792,10 @@ int main(){
                 if (index_ncurses == selected) {
                     wattron(win1, A_REVERSE);
                 }
-                if(listSnapshot[index_ncurses].p_ram> (long long int)1024*1024*1024){
+                if(listSnapshot[index_ncurses].p_ram  > (long long int)(1024*1024*1024)){
                     mvwprintw(win1, i+1, 4, "  %7d  | %-16.15s | %6.d  |  %6.1f %-5.4s | %4.1lf%% ", listSnapshot[index_ncurses].p_pid,listSnapshot[index_ncurses].p_name,listSnapshot[index_ncurses].p_threads,listSnapshot[index_ncurses].p_ram/(1024.0*1024*1024)," GBs", listSnapshot[index_ncurses].p_cpuPercent * 100);
                 }
-                if (listSnapshot[index_ncurses].p_ram<(long long int)(1024*1024*1024)){
+                if (listSnapshot[index_ncurses].p_ram < (long long int)(1024*1024*1024)){
                     mvwprintw(win1, i+1, 4, "  %7d  | %-16.15s | %6.d  |  %6.1f %-5.4s | %4.1lf%% ", listSnapshot[index_ncurses].p_pid,listSnapshot[index_ncurses].p_name,listSnapshot[index_ncurses].p_threads,listSnapshot[index_ncurses].p_ram/(1024.0*1024)," MBs", listSnapshot[index_ncurses].p_cpuPercent * 100);
                 }
                 contadorLastValidProcess = index_ncurses;
@@ -839,19 +926,31 @@ int main(){
         }
         mvwprintw(win2,0,2,    "> Basic Controls <");
         mvwprintw(win2,0,27,   "> Last Closed Process: %-15s <", lastClosedProcess);
-        mvwprintw(win2,1,2,    " Press 'w' or 'W' or 'Arrow Up'   to move up a process.");
-        mvwprintw(win2,2,2,    " Press 's' or 'S' or 'Arrow Down' to move down a process.");
-        mvwprintw(win2,3,2,    " Press 'k' or 'K' to close the selected task.");
-        mvwprintw(win2,4,2,    " Press 'q' or 'Q' to exit the program.");
+        mvwprintw(win2,1,2,    " Press 'Arrow up' to move up    |  Press 'Arrow down' to move down");
+        mvwprintw(win2,2,2,    " Press 'k' to close a task      |  Press 'q' to exit the program");
         
         mvwprintw(winInfo,0,2, "> Sorting Methods Controls <");
-        mvwprintw(winInfo,0,39,"> Current Sort Method: %s <", sortMethods[currSortMethod]);
+        mvwprintw(winInfo,0,38,"> Current Sort Method: %s <", sortMethods[currSortMethod]);
         mvwprintw(winInfo,1,2, "Press '1' to sort by Used RAM   | Press '3' to sort by Threads");
         mvwprintw(winInfo,2,2, "Press '2' to sort by CPU usage  | Press '4' to sort by PID");
 
+        mvwprintw(winTemp,0,2, "> System Temperature <");
+        mvwprintw(winTemp,1,2, "CPU average temperature: %3.0fC - only the first 7 cores will be shown",cpuAverageTempSnapshot);
+        mvwprintw(winTemp,2,2, "Cores temperature -> ");
+        int contadorChars= 24;
+        for (int i = 0; i<contagemCoresSnapshot; i++){
+            if (contadorChars == 42){
+                break;
+            }
+            mvwprintw(winTemp,2,contadorChars, "[%3.0fC]",cpuTempSnapshot[i]);
+            contadorChars+=6;
+        }
+
+
+
         mvwprintw(win3,0,2,    "> System Info <");
         mvwprintw(win3,1,2,    "Current RAM in Use:  %.2f GBs   | Total RAM Avaliable: %.2f GBs", memoria_usada_atual,memoria_total_pc);
-        mvwprintw(win3,2,2,    "Current RAM in Percent: %.2f%%  | Process count: %-9d",percentage, snapshotCount);
+        mvwprintw(win3,2,2,    "Current RAM in Percent: %.2f%-2s | Current CPU Usage: %3.2lf%-3s",percentage,"%", cpuTotalUsageCopySnapshot*100,"%");
 
         mvwprintw(win4,0,2,    "> Search By Name <");
         mvwprintw(win4,1,2,    "Press 'Enter' to Begin/Stop typing the Process name.");
@@ -867,13 +966,16 @@ int main(){
         wrefresh(win3);
         wrefresh(win4);
         wrefresh(winInfo);
+        wrefresh(winTemp);
         if (breakLoop){
             pthread_join(t1, NULL);
             endwin();
+            free(lastClosedProcess);
             free_process_list(listSnapshot, snapshotCount);
             exit(0);
         }
+        free(cpuTempSnapshot);
         free_process_list(listSnapshot, snapshotCount); 
-        usleep(20000);
+        usleep(10000);
     }
 }
